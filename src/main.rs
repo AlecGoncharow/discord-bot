@@ -66,7 +66,9 @@ command!(poll(_ctx, msg, msg_args) {
         let _ = msg.reply(&content);
     } else {
         let mut content = MessageBuilder::new()
-            .push("```md\n# Poll: ")
+            .push("```md\n#")
+            .push(&msg.author.name)
+            .push("'s Poll: ")
             .push(&title);
         let mut has_args = args.len() > 1;
         let mut num = 0;

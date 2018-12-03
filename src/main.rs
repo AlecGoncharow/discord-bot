@@ -21,7 +21,8 @@ fn main() {
             .cmd("mort", mort)
             .cmd("morton", mort)
             .cmd("multiply", multiply)
-            .cmd("poll", poll),
+            .cmd("poll", poll)
+            .cmd("args", test),
     );
 
     // start listening for events by starting a single shard
@@ -52,36 +53,35 @@ command!(multiply(_ctx, msg, args) {
 
 use serenity::model::id::ChannelId;
 use serenity::utils::MessageBuilder;
-command!(poll(_ctx, msg, args) {
+command!(poll(_ctx, msg, msg_args) {
     let channel_id = ChannelId(519024472930648065);
-    let mut valid = true;
-    let title = match args.single_quoted::<String>()  {
-        Ok (t) => t,
-        Err(_) => {
-            valid = false;
-            String::from("You must give at least one quoted argument ex: -poll \"I know how to make poll\"")
-            },
-    };
-    if valid {
+    let args: Vec<&str> = msg_args.full().split(";").collect();
+    let title = args[0];
+    let is_help = title.len() == 0;
+    if is_help {
         let mut content = MessageBuilder::new()
-            .push("Poll: ")
+            .push("```md\n# Options:\n1. -poll yes or no question here\n")
+            .push("2. -poll question; options, delimited by, commas\n```")
+            .build();
+        let _ = msg.reply(&content);
+    } else {
+        let mut content = MessageBuilder::new()
+            .push("```md\n# Poll: ")
             .push(&title);
-
-        let mut has_args = false;
+        let mut has_args = args.len() > 1;
         let mut num = 0;
-        loop {
-            let a = match args.single_quoted::<String>() {
-                Ok(t) => t,
-                Err(_) => break,
-            };
-            has_args = true;
-            content = content
-                .push("\n")
-                .push(num)
-                .push(": ")
-                .push(a);
-            num += 1;
+        if has_args {
+            let options: Vec<&str> = args[1].split(",").collect();
+            for item in options {
+                content = content
+                    .push("\n")
+                    .push(num)
+                    .push(". ")
+                    .push(item);
+                num += 1;
+            }
         }
+        content = content.push("```");
         let res = match channel_id.say(&content) {
             Ok(p) => p,
             Err(e) => panic!("error sending message: {}", e),
@@ -115,7 +115,12 @@ command!(poll(_ctx, msg, args) {
             }
         }
     }
-    else {
-        let _ = msg.reply(&title);
+});
+
+command!(test(_ctx, msg, args) {
+    let _ = msg.reply(args.full());
+    let spl = args.full().split(",");
+    for item in spl {
+        msg.reply(item);
     }
 });

@@ -21,8 +21,7 @@ fn main() {
             .cmd("mort", mort)
             .cmd("morton", mort)
             .cmd("multiply", multiply)
-            .cmd("poll", poll)
-            .cmd("args", test),
+            .cmd("poll", poll),
     );
 
     // start listening for events by starting a single shard
@@ -116,13 +115,5 @@ command!(poll(_ctx, msg, msg_args) {
                 let _ = res.react(resp);
             }
         }
-    }
-});
-
-command!(test(_ctx, msg, args) {
-    let _ = msg.reply(args.full());
-    let spl = args.full().split(",");
-    for item in spl {
-        msg.reply(item);
     }
 });

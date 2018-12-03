@@ -19,6 +19,7 @@ fn main() {
             .configure(|c| c.prefix("-")) // set the bot's prefix to "-"
             .cmd("ping", ping)
             .cmd("mort", mort)
+            .cmd("morton", mort)
             .cmd("multiply", multiply)
             .cmd("poll", poll),
     );
@@ -49,7 +50,62 @@ command!(multiply(_ctx, msg, args) {
     let _ = msg.reply(&product.to_string());
 });
 
+use serenity::model::channel::ReactionType;
+use serenity::model::id::ChannelId;
+use serenity::utils::MessageBuilder;
 command!(poll(_ctx, msg, args) {
-    let re = args.single_quoted::<String>().unwrap();
-    let _ = msg.reply(&re);
+    let channel_id = ChannelId(518997789351346196);
+    let mut valid = true;
+    let title = match args.single_quoted::<String>()  {
+        Ok (t) => t,
+        Err(_) => {
+            valid = false;
+            String::from("You must give at least one quoted argument ex: -poll \"I know how to make poll\"")
+            },
+    };
+    if valid {
+        let mut content = MessageBuilder::new()
+            .push("Poll: ")
+            .push(&title);
+
+        let mut has_args = false;
+        let mut num = 0;
+        loop {
+            let a = match args.single_quoted::<String>() {
+                Ok(t) => t,
+                Err(_) => break,
+            };
+            has_args = true;
+            content = content
+                .push("\n")
+                .push(num)
+                .push(": ")
+                .push(a);
+            num += 1;
+        }
+        let res = match channel_id.say(&content) {
+            Ok(p) => p,
+            Err(e) => panic!("error sending message: {}", e),
+        };
+        if !has_args {
+            let _ = match res.react('\u{1F44E}'){
+                Ok(s) => s,
+                Err(e) => panic!("error reacting: {}", e),
+            };
+            let _ = res.react(ReactionType::from('\u{1F44D}'));
+        } else {
+            for i in 0..num {
+                let unicode = '\u{30}';
+                let a = '\u{20E3}';
+                let mut resp = String::from("");
+                resp.push(unicode);
+                resp.push(a);
+                msg.reply(&resp);
+                let _ = res.react(resp);
+            }
+        }
+    }
+    else {
+        let _ = msg.reply(&title);
+    }
 });

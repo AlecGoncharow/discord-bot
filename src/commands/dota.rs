@@ -28,7 +28,7 @@ command!(random(_ctx, msg) {
     let heroes = data.heroes;
 
     let mut rng = rand::thread_rng();
-    let y: u8 = rng.gen_range(1, data.count);
+    let y: u8 = rng.gen_range(0, data.count);
     let hero = heroes.get(y as usize).unwrap();
 
     let mut content = MessageBuilder::new()

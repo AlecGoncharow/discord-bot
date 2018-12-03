@@ -94,13 +94,24 @@ command!(poll(_ctx, msg, args) {
             };
             let _ = res.react(ReactionType::from('\u{1F44D}'));
         } else {
+            // There has to be a better way...
+            let mut lookup = std::collections::HashMap::new();
+            lookup.insert(0, '\u{30}');
+            lookup.insert(1, '\u{31}');
+            lookup.insert(2, '\u{32}');
+            lookup.insert(3, '\u{33}');
+            lookup.insert(4, '\u{34}');
+            lookup.insert(5, '\u{35}');
+            lookup.insert(6, '\u{36}');
+            lookup.insert(7, '\u{37}');
+            lookup.insert(8, '\u{38}');
+            lookup.insert(9, '\u{39}');
             for i in 0..num {
-                let unicode = '\u{30}';
+                let unicode = lookup.get(&i).unwrap().to_owned();
                 let a = '\u{20E3}';
                 let mut resp = String::from("");
                 resp.push(unicode);
                 resp.push(a);
-                msg.reply(&resp);
                 let _ = res.react(resp);
             }
         }

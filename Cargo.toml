@@ -1,0 +1,7 @@
+[package]
+name = "disc_bot"
+version = "0.1.0"
+authors = ["Alec Goncharow <Alec.Goncharow@gmail.com>"]
+
+[dependencies]
+serenity = "*"

@@ -50,11 +50,10 @@ command!(multiply(_ctx, msg, args) {
     let _ = msg.reply(&product.to_string());
 });
 
-use serenity::model::channel::ReactionType;
 use serenity::model::id::ChannelId;
 use serenity::utils::MessageBuilder;
 command!(poll(_ctx, msg, args) {
-    let channel_id = ChannelId(518997789351346196);
+    let channel_id = ChannelId(519024472930648065);
     let mut valid = true;
     let title = match args.single_quoted::<String>()  {
         Ok (t) => t,
@@ -92,7 +91,7 @@ command!(poll(_ctx, msg, args) {
                 Ok(s) => s,
                 Err(e) => panic!("error reacting: {}", e),
             };
-            let _ = res.react(ReactionType::from('\u{1F44D}'));
+            let _ = res.react('\u{1F44D}');
         } else {
             // There has to be a better way...
             let mut lookup = std::collections::HashMap::new();

@@ -1,0 +1,3 @@
+[submodule "ArtifactDeckCode"]
+	path = ArtifactDeckCode
+	url = https://github.com/ValveSoftware/ArtifactDeckCode.git

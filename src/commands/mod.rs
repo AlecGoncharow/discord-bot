@@ -1,3 +1,3 @@
 pub mod dota;
-pub mod memes;
+pub mod misc;
 pub mod poll;

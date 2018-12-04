@@ -23,10 +23,10 @@ fn main() {
     client.with_framework(
         StandardFramework::new()
             .configure(|c| c.prefix("-")) // set the bot's prefix to "-"
-            .cmd("ping", commands::memes::ping)
-            .cmd("mort", commands::memes::mort)
-            .cmd("morton", commands::memes::mort)
-            .cmd("multiply", commands::memes::multiply)
+            .cmd("ping", commands::misc::ping)
+            .cmd("mort", commands::misc::mort)
+            .cmd("morton", commands::misc::mort)
+            .cmd("multiply", commands::misc::multiply)
             .cmd("poll", commands::poll::poll)
             .cmd("random", commands::dota::random),
     );

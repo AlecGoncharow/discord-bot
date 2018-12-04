@@ -1,1 +1,1 @@
-# discord-bot [![Build Status](https://travis-ci.com/AlecGoncharow/discord-rust-bot.svg?branch=master)](https://travis-ci.com/AlecGoncharow/discord-rust-bot)
+# discord-bot [![Build Status](https://travis-ci.com/AlecGoncharow/discord-rust-bot.svg?branch=master)](https://travis-ci.com/AlecGoncharow/discord-bot)

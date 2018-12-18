@@ -2,3 +2,4 @@
 **/*.rs.bk
 export.sh
 Cargo.lock
+data/tips/tips.json

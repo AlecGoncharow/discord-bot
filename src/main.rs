@@ -2,6 +2,8 @@
 extern crate serenity;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate lazy_static;
 extern crate rand;
 extern crate serde_json;
 
@@ -28,7 +30,8 @@ fn main() {
             .cmd("morton", commands::misc::mort)
             .cmd("multiply", commands::misc::multiply)
             .cmd("poll", commands::poll::poll)
-            .cmd("random", commands::dota::random),
+            .cmd("random", commands::dota::random)
+            .cmd("tip", commands::tip::tip),
     );
 
     // start listening for events by starting a single shard

@@ -2,6 +2,7 @@ use serenity::utils::MessageBuilder;
 use std::fs::OpenOptions;
 use std::io::BufWriter;
 use std::path::Path;
+use chrono::{Local, TimeZone};
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -23,7 +24,7 @@ struct Data {
     users: Vec<User>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 struct Tip {
     tipper_id: u64,
     tipper_name: String,
@@ -37,22 +38,7 @@ struct Tips {
     tips: Vec<Tip>,
 }
 
-command!(tip_log(_ctx, _msg) {
-    let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-    let path = Path::new("./data/tips/tips.json");
-    let json = match OpenOptions::new().read(true).open(path) {
-        Ok(f) => f,
-        Err(_) => OpenOptions::new().write(true).create(true).open(path).expect("Error creating file"),
-    };
-
-    let mut data: Data = match serde_json::from_reader(json) {
-        Ok(j) => j,
-        Err(_) => Data {
-            reset_time: time.as_secs() + SECONDS_IN_WEEK,
-            users: Vec::new(),
-        }
-    };
-
+command!(tip_log(_ctx, msg) {
     let log_path = Path::new("./data/tips/log.json");
     let json_log = match OpenOptions::new().read(true).open(log_path) {
         Ok(f) => f,
@@ -65,6 +51,31 @@ command!(tip_log(_ctx, _msg) {
             tips: Vec::new()
         }
     }; 
+
+    let mut out: Vec<Tip> = Vec::new();
+
+    let len = tip_data.tips.len();
+    if len > 5 {
+        for i in 1..=5 {
+            out.push(tip_data.tips[len - i].clone()); 
+        }
+    } else {
+        out = tip_data.tips;
+        out.reverse();
+    }
+
+    let mut content = MessageBuilder::new()
+            .push("```md\n")
+            .push("### Most Recent Tips");
+
+    for entry in out {
+        content = content.push(format!("\n* [{}] {} tipped {}", Local.timestamp(entry.time as i64,0), 
+                             entry.tipper_name, 
+                             entry.tipee_name));
+    }
+
+    let resp = content.push("\n```").build();
+    let _ = msg.channel_id.say(&resp);
 
 });
 
@@ -135,6 +146,9 @@ command!(tip(_ctx, msg, msg_args) {
             .push(format!("\n* Lifetime tips given: {}", tipper_user.tips_given))
             .push(format!("\n* Tips to give this week: {}", tipper_user.tips_to_give))
             .push(format!("\n\n### Usage ###\n -tip @some_well_deserving_person_here\n"))
+            .push(format!("\n### Info ###\nNext weekly tips reset: {} \n", Local.timestamp(
+                                                                                    data.reset_time as i64,
+                                                                                    0)))
             .push(format!("\n```"))
             .build();
         let _ = msg.reply(&content);

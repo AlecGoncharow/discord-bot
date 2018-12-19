@@ -2,6 +2,7 @@ use serenity::utils::MessageBuilder;
 use std::fs::OpenOptions;
 use std::io::BufWriter;
 use std::path::Path;
+
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const SECONDS_IN_WEEK: u64 = 604800;
@@ -22,6 +23,51 @@ struct Data {
     users: Vec<User>,
 }
 
+#[derive(Serialize, Deserialize)]
+struct Tip {
+    tipper_id: u64,
+    tipper_name: String,
+    tipee_id: u64,
+    tipee_name: String,
+    time: u64,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Tips {
+    tips: Vec<Tip>,
+}
+
+command!(tip_log(_ctx, _msg) {
+    let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+    let path = Path::new("./data/tips/tips.json");
+    let json = match OpenOptions::new().read(true).open(path) {
+        Ok(f) => f,
+        Err(_) => OpenOptions::new().write(true).create(true).open(path).expect("Error creating file"),
+    };
+
+    let mut data: Data = match serde_json::from_reader(json) {
+        Ok(j) => j,
+        Err(_) => Data {
+            reset_time: time.as_secs() + SECONDS_IN_WEEK,
+            users: Vec::new(),
+        }
+    };
+
+    let log_path = Path::new("./data/tips/log.json");
+    let json_log = match OpenOptions::new().read(true).open(log_path) {
+        Ok(f) => f,
+        Err(_) => OpenOptions::new().write(true).create(true).open(log_path).expect("Error creating log file"),
+    };
+
+    let mut tip_data: Tips = match serde_json::from_reader(json_log) {
+        Ok(j) => j,
+        Err(_) => Tips {
+            tips: Vec::new()
+        }
+    }; 
+
+});
+
 command!(tip(_ctx, msg, msg_args) {
     let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
     let path = Path::new("./data/tips/tips.json");
@@ -37,6 +83,20 @@ command!(tip(_ctx, msg, msg_args) {
             users: Vec::new(),
         }
     };
+
+    let log_path = Path::new("./data/tips/log.json");
+    let json_log = match OpenOptions::new().write(true).read(true).open(log_path) {
+        Ok(f) => f,
+        Err(_) => OpenOptions::new().write(true).create(true).open(log_path).expect("Error creating log file"),
+    };
+
+    let mut tip_data: Tips = match serde_json::from_reader(json_log) {
+        Ok(j) => j,
+        Err(_) => Tips {
+            tips: Vec::new()
+        }
+    };
+
 
     if time.as_secs() > data.reset_time {
         data.users.iter_mut().for_each(|x| {x.tips_to_give = WEEKLY_TIPS; x.week_tips = 0;});
@@ -70,11 +130,12 @@ command!(tip(_ctx, msg, msg_args) {
 
         let mut content = MessageBuilder::new()
             .push("```md\n")
-            .push(format!("### You have:\n* Lifetime recieved tips: {}", tipper_user.lifetime_tips))
+            .push(format!("\n# You have:\n* Lifetime recieved tips: {}", tipper_user.lifetime_tips))
             .push(format!("\n* Tips recieved this week: {}", tipper_user.week_tips))
             .push(format!("\n* Lifetime tips given: {}", tipper_user.tips_given))
             .push(format!("\n* Tips to give this week: {}", tipper_user.tips_to_give))
-            .push(format!("\n### Usage ###\n -tip @SomeWellDeservingPersonHere\n```"))
+            .push(format!("\n\n### Usage ###\n -tip @some_well_deserving_person_here\n"))
+            .push(format!("\n```"))
             .build();
         let _ = msg.reply(&content);
     } else {
@@ -91,6 +152,7 @@ command!(tip(_ctx, msg, msg_args) {
             let mut _tipper_to_give = 0;
             let mut _tipper_given = 0;
             let mut _tipee_tips = (0, 0);
+            let mut _tipee_name: String;
             {
                 let exists = data.users.iter().any(|x| x.user_id == tipper);
                 let mut tipper_user = if exists {
@@ -138,6 +200,7 @@ command!(tip(_ctx, msg, msg_args) {
                 tipee_user.week_tips += 1;
                 tipee_user.lifetime_tips += 1;
                 _tipee_tips = (tipee_user.week_tips, tipee_user.lifetime_tips);
+                _tipee_name = tipee_id.to_user().unwrap().name;
             }
 
             let mut content = MessageBuilder::new()
@@ -157,6 +220,19 @@ command!(tip(_ctx, msg, msg_args) {
             let _ = msg.channel_id.say(&content);
             let writer = BufWriter::new(OpenOptions::new().write(true).open(path).unwrap());
             let _  = serde_json::to_writer(writer, &data).unwrap();
+
+            let transaction = Tip {
+                tipper_id: tipper,
+                tipper_name: msg.author.name.clone(),
+                tipee_id: tipee,
+                tipee_name: _tipee_name,
+                time: time.as_secs(),
+            };
+
+            tip_data.tips.push(transaction);
+
+            let log_writer = BufWriter::new(OpenOptions::new().write(true).open(log_path).unwrap());
+            let _ = serde_json::to_writer(log_writer, &tip_data);
         }
     }
 });

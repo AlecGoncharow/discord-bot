@@ -3,3 +3,4 @@
 export.sh
 Cargo.lock
 data/tips/tips.json
+data/tips/log.json

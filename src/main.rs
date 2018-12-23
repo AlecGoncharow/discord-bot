@@ -33,7 +33,8 @@ fn main() {
             .cmd("poll", commands::poll::poll)
             .cmd("random", commands::dota::random)
             .cmd("tips", commands::tip::tip_log)
-            .cmd("tip", commands::tip::tip),
+            .cmd("tip", commands::tip::tip)
+            .cmd("antitip", commands::tip::tip),
     );
 
     // start listening for events by starting a single shard

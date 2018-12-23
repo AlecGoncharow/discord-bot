@@ -8,14 +8,23 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 const SECONDS_IN_WEEK: u64 = 604800;
 const WEEKLY_TIPS: u8 = 7;
+const WEEKLY_ANTI_TIPS: u8 = 1;
 
 #[derive(Serialize, Deserialize, Clone)]
 struct User {
     user_id: u64,
-    lifetime_tips: u32,
-    week_tips: u8,
+    lifetime_tips: i32,
+    week_tips: i8,
     tips_to_give: u8,
     tips_given: u32,
+    #[serde(default = "default_anti_tip")]
+    anti_tips: u8,
+    #[serde(default)]
+    anti_tips_given: u32,
+}
+
+fn default_anti_tip() -> u8 {
+    WEEKLY_ANTI_TIPS
 }
 
 #[derive(Serialize, Deserialize)]
@@ -31,6 +40,12 @@ struct Tip {
     tipee_id: u64,
     tipee_name: String,
     time: u64,
+    #[serde(default = "default_is_anti")]
+    is_anti: bool,
+}
+
+fn default_is_anti() -> bool {
+    false
 }
 
 #[derive(Serialize, Deserialize)]
@@ -66,11 +81,17 @@ command!(tip_log(_ctx, msg) {
 
     let mut content = MessageBuilder::new()
             .push("```md\n")
-            .push("### Most Recent Tips");
+            .push("### Most Recent Tips ###");
 
     for entry in out {
-        content = content.push(format!("\n* [{}] {} tipped {}", Local.timestamp(entry.time as i64,0), 
+        let tip_text = if entry.is_anti {
+            "anti tipped"
+        } else {
+            "tipped"
+        };
+        content = content.push(format!("\n* [{}] {} {} {}", Local.timestamp(entry.time as i64,0), 
                              entry.tipper_name, 
+                             tip_text,
                              entry.tipee_name));
     }
 
@@ -86,6 +107,8 @@ command!(tip(_ctx, msg, msg_args) {
         Ok(f) => f,
         Err(_) => OpenOptions::new().write(true).create(true).open(path).expect("Error creating file"),
     };
+
+    let is_anti = msg.content.starts_with("-anti");
 
     let mut data: Data = match serde_json::from_reader(json) {
         Ok(j) => j,
@@ -134,6 +157,8 @@ command!(tip(_ctx, msg, msg_args) {
                 week_tips: 0,
                 tips_to_give: WEEKLY_TIPS,
                 tips_given: 0,
+                anti_tips: WEEKLY_ANTI_TIPS,
+                anti_tips_given: 0,
             });
             let len = data.users.len();
             data.users.get_mut(len - 1).unwrap()
@@ -145,6 +170,8 @@ command!(tip(_ctx, msg, msg_args) {
             .push(format!("\n* Tips recieved this week: {}", tipper_user.week_tips))
             .push(format!("\n* Lifetime tips given: {}", tipper_user.tips_given))
             .push(format!("\n* Tips to give this week: {}", tipper_user.tips_to_give))
+            .push(format!("\n* Lifetime anti tips to given: {}", tipper_user.anti_tips_given))
+            .push(format!("\n* Ant tips to give this week: {}", tipper_user.anti_tips))
             .push(format!("\n\n### Usage ###\n -tip @some_well_deserving_person_here\n"))
             .push(format!("\n### Info ###\nNext weekly tips reset: {} \n", Local.timestamp(
                                                                                     data.reset_time as i64,
@@ -167,6 +194,7 @@ command!(tip(_ctx, msg, msg_args) {
             let mut _tipper_given = 0;
             let mut _tipee_tips = (0, 0);
             let mut _tipee_name: String;
+            let mut has_tips = true;
             {
                 let exists = data.users.iter().any(|x| x.user_id == tipper);
                 let mut tipper_user = if exists {
@@ -178,6 +206,8 @@ command!(tip(_ctx, msg, msg_args) {
                         week_tips: 0,
                         tips_to_give: WEEKLY_TIPS,
                         tips_given: 0,
+                        anti_tips: WEEKLY_ANTI_TIPS,
+                        anti_tips_given: 0,
                     });
                     let len = data.users.len();
                     data.users.get_mut(len - 1).unwrap()
@@ -185,66 +215,99 @@ command!(tip(_ctx, msg, msg_args) {
 
 
 
-                if tipper_user.tips_to_give == 0 {
-                    let _ = msg.reply("You are out of tips this week, try again next week");
+                if !is_anti {
+                    if tipper_user.tips_to_give == 0 {
+                        let _ = msg.reply("You are out of tips this week, try again next week");
+                        has_tips = false;
+                    } else {
+                        tipper_user.tips_to_give -= 1;
+                        tipper_user.tips_given += 1;
+                        _tipper_to_give = tipper_user.tips_to_give;
+                        _tipper_given = tipper_user.tips_given;
+                    }
+                } else {
+                    if tipper_user.anti_tips == 0 {
+                        let _ = msg.reply("You are out of anti tips this week, try again next week");
+                        has_tips = false;
+                    } else {
+                        tipper_user.anti_tips -= 1;
+                        tipper_user.anti_tips_given += 1;
+                        _tipper_to_give = tipper_user.anti_tips;
+                        _tipper_given = tipper_user.anti_tips_given;
+                    }
+                }
+            }
+            if has_tips {
+                {
+
+                    let exists = data.users.iter().any(|x| x.user_id == tipee);
+                    let mut tipee_user = if exists {
+                        data.users.iter_mut().find(|x| x.user_id == tipee).unwrap()
+                    } else {
+                        data.users.push(User {
+                            user_id: tipee,
+                            lifetime_tips: 0,
+                            week_tips: 0,
+                            tips_to_give: WEEKLY_TIPS,
+                            tips_given: 0,
+                            anti_tips: WEEKLY_ANTI_TIPS,
+                            anti_tips_given: 0,
+                        });
+                        let len = data.users.len();
+                        data.users.get_mut(len - 1).unwrap()
+                    };
+
+                    if !is_anti {
+                        tipee_user.week_tips += 1;
+                        tipee_user.lifetime_tips += 1;
+                    } else {
+                        tipee_user.week_tips -= 1;
+                        tipee_user.lifetime_tips -= 1;
+                    }
+                    _tipee_tips = (tipee_user.week_tips, tipee_user.lifetime_tips);
+                    _tipee_name = tipee_id.to_user().unwrap().name;
                 }
 
-                tipper_user.tips_to_give -= 1;
-                tipper_user.tips_given += 1;
-                _tipper_to_give = tipper_user.tips_to_give;
-                _tipper_given = tipper_user.tips_given;
-            }
-            {
-
-                let exists = data.users.iter().any(|x| x.user_id == tipee);
-                let mut tipee_user = if exists {
-                    data.users.iter_mut().find(|x| x.user_id == tipee).unwrap()
+                let tip_text = if is_anti {
+                    " anti tipped"
                 } else {
-                    data.users.push(User {
-                        user_id: tipee,
-                        lifetime_tips: 0,
-                        week_tips: 0,
-                        tips_to_give: WEEKLY_TIPS,
-                        tips_given: 0,
-                    });
-                    let len = data.users.len();
-                    data.users.get_mut(len - 1).unwrap()
+                    " tipped "
+                };
+                let giver_text = if is_anti {
+                    format!("has given {} lifetime anti tips, and has {} remaining anti tips this week\n", 
+                            _tipper_given, _tipper_to_give)
+                } else {
+                    format!(" has given {} lifetime tips and has {} remaining this week \n",
+                            _tipper_given,
+                            _tipper_to_give)
+                };
+                let mut content = MessageBuilder::new()
+                    .mention(&tipper_id)
+                    .push(tip_text)
+                    .mention(&tipee_id)
+                    .push("\n")
+                    .mention(&tipper_id)
+                    .push(giver_text)
+                    .mention(&tipee_id)
+                    .push(format!(" has recieved {} tips this week and {} lifetime tips", _tipee_tips.0, _tipee_tips.1))
+                    .build();
+
+                println!("{:?} -> {:?}" , tipper, tipee);
+                let _ = msg.channel_id.say(&content);
+                let writer = BufWriter::new(OpenOptions::new().write(true).open(path).unwrap());
+                let _  = serde_json::to_writer(writer, &data).unwrap();
+
+                let transaction = Tip {
+                    tipper_id: tipper,
+                    tipper_name: msg.author.name.clone(),
+                    tipee_id: tipee,
+                    tipee_name: _tipee_name,
+                    time: time.as_secs(),
+                    is_anti,
                 };
 
-                tipee_user.week_tips += 1;
-                tipee_user.lifetime_tips += 1;
-                _tipee_tips = (tipee_user.week_tips, tipee_user.lifetime_tips);
-                _tipee_name = tipee_id.to_user().unwrap().name;
+                tip_data.tips.push(transaction);
             }
-
-            let mut content = MessageBuilder::new()
-                .mention(&tipper_id)
-                .push(" Tipped ")
-                .mention(&tipee_id)
-                .push("\n")
-                .mention(&tipper_id)
-                .push(format!(" has given {} lifetime tips and has {} remaining this week \n",
-                              _tipper_given,
-                              _tipper_to_give))
-                .mention(&tipee_id)
-                .push(format!(" has recieved {} tips this week and {} lifetime tips", _tipee_tips.0, _tipee_tips.1))
-                .build();
-
-            println!("{:?} -> {:?}" , tipper, tipee);
-            let _ = msg.channel_id.say(&content);
-            let writer = BufWriter::new(OpenOptions::new().write(true).open(path).unwrap());
-            let _  = serde_json::to_writer(writer, &data).unwrap();
-
-            let transaction = Tip {
-                tipper_id: tipper,
-                tipper_name: msg.author.name.clone(),
-                tipee_id: tipee,
-                tipee_name: _tipee_name,
-                time: time.as_secs(),
-            };
-
-            tip_data.tips.push(transaction);
-
             let log_writer = BufWriter::new(OpenOptions::new().write(true).open(log_path).unwrap());
             let _ = serde_json::to_writer(log_writer, &tip_data);
         }

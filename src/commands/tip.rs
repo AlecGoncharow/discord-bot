@@ -171,7 +171,7 @@ command!(tip(_ctx, msg, msg_args) {
             .push(format!("\n* Lifetime tips given: {}", tipper_user.tips_given))
             .push(format!("\n* Tips to give this week: {}", tipper_user.tips_to_give))
             .push(format!("\n* Lifetime anti tips to given: {}", tipper_user.anti_tips_given))
-            .push(format!("\n* Ant tips to give this week: {}", tipper_user.anti_tips))
+            .push(format!("\n* Anti tips to give this week: {}", tipper_user.anti_tips))
             .push(format!("\n\n### Usage ###\n -tip @some_well_deserving_person_here\n"))
             .push(format!("\n### Info ###\nNext weekly tips reset: {} \n", Local.timestamp(
                                                                                     data.reset_time as i64,

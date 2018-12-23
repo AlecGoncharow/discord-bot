@@ -4,8 +4,10 @@ extern crate serenity;
 extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
+extern crate artifact_lib;
 extern crate chrono;
 extern crate rand;
+extern crate regex;
 extern crate serde_json;
 
 use serenity::{framework::StandardFramework, model::gateway::Ready, prelude::*};
@@ -34,7 +36,12 @@ fn main() {
             .cmd("random", commands::dota::random)
             .cmd("tips", commands::tip::tip_log)
             .cmd("tip", commands::tip::tip)
-            .cmd("antitip", commands::tip::tip),
+            .cmd("antitip", commands::tip::tip)
+            .cmd("card", commands::artifact::card)
+            .group("Artifact", |g| {
+                g.prefix("artifact")
+                    .command("card", |c| c.cmd(commands::artifact::card))
+            }),
     );
 
     // start listening for events by starting a single shard

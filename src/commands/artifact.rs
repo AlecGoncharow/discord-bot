@@ -1,16 +1,11 @@
-use artifact_lib::Artifact;
 use regex::Regex;
-
-lazy_static! {
-    static ref ARTIFACT: Artifact = Artifact::new();
-}
 
 command!(card(_ctx, msg, msg_args) {
     let card_name = msg_args.full();
     if card_name.len() == 0 {
         let _ = msg.reply("pass a card name to get the card's image back");
     } else {
-        let lookup = ARTIFACT.card_from_name(card_name);
+        let lookup = crate::ARTIFACT.card_from_name(card_name);
         if lookup.is_none() {
             let _ = msg.reply(&format!("{} is not a valid card name", card_name));
         } else {

@@ -10,15 +10,21 @@ extern crate rand;
 extern crate regex;
 extern crate serde_json;
 
+use artifact_lib::Artifact;
 use serenity::{framework::StandardFramework, model::gateway::Ready, prelude::*};
 use std::env;
 
 mod commands;
 struct Handler;
 
+lazy_static! {
+    static ref ARTIFACT: Artifact = Artifact::new();
+}
+
 impl EventHandler for Handler {
     fn ready(&self, _: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
+        println!("{:?}", ARTIFACT.card_from_name("drow ranger").unwrap());
     }
 }
 fn main() {

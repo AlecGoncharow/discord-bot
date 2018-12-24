@@ -43,6 +43,7 @@ fn main() {
             .cmd("tips", commands::tip::tip_log)
             .cmd("tip", commands::tip::tip)
             .cmd("antitip", commands::tip::tip)
+            .cmd("profile", commands::tip::profile)
             .cmd("card", commands::artifact::card)
             .group("Artifact", |g| {
                 g.prefix("artifact")

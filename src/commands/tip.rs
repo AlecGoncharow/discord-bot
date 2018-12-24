@@ -97,6 +97,75 @@ command!(tip_log(_ctx, msg) {
 
     let resp = content.push("\n```").build();
     let _ = msg.channel_id.say(&resp);
+});
+
+fn user_from_id(id: u64) -> User {
+    let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+    let path = Path::new("./data/tips/tips.json");
+    let json = match OpenOptions::new().write(true).read(true).open(path) {
+        Ok(f) => f,
+        Err(_) => OpenOptions::new().write(true).create(true).open(path).expect("Error creating file"),
+    };
+
+    let mut data: Data = match serde_json::from_reader(json) {
+        Ok(j) => j,
+        Err(_) => Data {
+            reset_time: time.as_secs() + SECONDS_IN_WEEK,
+            users: Vec::new(),
+        }
+    };
+
+    let exists = data.users.iter().any(|x| x.user_id == id);
+
+    if exists {
+        data.users.iter_mut().find(|x| x.user_id == id).unwrap().clone()
+    } else {
+        data.users.push(User {
+            user_id: id,
+            lifetime_tips: 0,
+            week_tips: 0,
+            tips_to_give: WEEKLY_TIPS,
+            tips_given: 0,
+            anti_tips: WEEKLY_ANTI_TIPS,
+            anti_tips_given: 0,
+        });
+        let len = data.users.len();                
+        let writer = BufWriter::new(OpenOptions::new().write(true).open(path).unwrap());
+        let _  = serde_json::to_writer(writer, &data).unwrap();
+        data.users.get_mut(len - 1).unwrap().clone()
+    }
+}
+
+command!(profile(_ctx, msg, msg_args) {
+    let is_other = match msg_args.single_n::<serenity::model::id::UserId>() {
+        Ok(_) => true,
+        Err(_) => false,
+    };
+
+    let user: serenity::model::user::User = if is_other {
+        msg_args.single::<serenity::model::id::UserId>().unwrap().to_user().unwrap()
+    } else {
+        msg.author.clone()
+    };
+
+    let tip_user: User = user_from_id(*user.id.as_u64());
+    let avatar = user.face();
+    let ava_url = if avatar.ends_with(".webp?size=1024") {
+        &avatar[..avatar.len() - 15]
+    } else {
+        avatar.as_str()
+    };
+
+    let _ = msg.channel_id.send_message(|m| m
+                                        .embed(|e| e
+                                               .title("Tip Profile")
+                                               .thumbnail(
+                                                   ava_url
+                                                   )
+                                               .field("Lifetime Tips Recieved",
+                                                      tip_user.lifetime_tips,
+                                                      false)
+                                               ));
 
 });
 

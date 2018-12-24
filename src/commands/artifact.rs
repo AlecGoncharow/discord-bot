@@ -1,4 +1,5 @@
 use regex::Regex;
+use serenity::utils::Colour;
 
 command!(card(_ctx, msg, msg_args) {
     let card_name = msg_args.full();
@@ -16,10 +17,23 @@ command!(card(_ctx, msg, msg_args) {
             let text = named_card.card_text.english.clone();
             let break_lines = line_break.replace_all(&text, "\n");
             let desc = html.replace_all(&break_lines, "");
+            let color = if named_card.is_red {
+                Colour::DARK_RED
+            } else if named_card.is_green {
+                Colour::DARK_GREEN
+            } else if named_card.is_blue {
+                Colour::DARK_BLUE
+            } else if named_card.is_black { 
+                Colour::DARK_PURPLE
+            } else {
+                Colour::GOLD
+            }; 
+
             let _ = msg.channel_id.send_message(|m| m
                                                 .embed(|e| e
                                                        .title(&named_card.card_name.english)
                                                        .description(&desc)
+                                                       .color(color)
                                                        .image(&named_card.large_image.default)));
         }
     }

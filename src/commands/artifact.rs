@@ -58,21 +58,65 @@ command!(get_card(_ctx, msg, msg_args) {
                     let _ = msg.reply("more than 5 cards were found, stopping");
                     break;
                 }
-                print_card(msg, v);
-                count += 1;
+                let is_single = match v {
+                    artifact_lib::NamedCard::Single(_) => true,
+                    _ => false,
+                };
+                if is_single {
+                    let value = match v {
+                        artifact_lib::NamedCard::Single(s) => s,
+                        _ => panic!("something terrible has happened"),
+                    };
+                    print_card(msg, value);
+                    count += 1;
+                } else {
+                    let value = match v {
+                        artifact_lib::NamedCard::Multiple(m) => m,
+                        _ => panic!("something terrible has happened"),
+                    };
+                    for c in value {
+                        print_card(msg, c);
+                        count += 1;
+                    }
+                }
             }
         } else {
-            let named_card: &artifact_lib::Card = lookup.unwrap();
+            let named_card_wrapped: &artifact_lib::NamedCard = lookup.unwrap();
+            let is_single = match named_card_wrapped {
+                artifact_lib::NamedCard::Single(_) => true,
+                _ => false,
+            };
  
-            print_card(msg, named_card);
-            let mut refs = Vec::new();
-            get_references(&named_card, &mut refs);
-            for r in refs {
-                let card = crate::ARTIFACT.card_from_id(r).unwrap();
-                print_card(msg, card);
+            if is_single {
+                let named_card = match named_card_wrapped { 
+                    artifact_lib::NamedCard::Single(s) => s,
+                    _ => panic!("something terrible has happened"),
+                };
+                print_card(msg, named_card);
+                let mut refs = Vec::new();
+                get_references(&named_card, &mut refs);
+                for r in refs {
+                    let card = crate::ARTIFACT.card_from_id(r).unwrap();
+                    print_card(msg, card);
+                }
+
+            } else {
+                let value = match named_card_wrapped {
+                    artifact_lib::NamedCard::Multiple(m) => m,
+                    _ => panic!("something terrible has happened"),
+                };
+                let mut refs = Vec::new();
+                for c in value {
+                    if !refs.contains(&c.card_id) {
+                        refs.push(c.card_id);
+                    }
+                    get_references(&c, &mut refs);
+                }   
+                for r in &refs {
+                    let card = crate::ARTIFACT.card_from_id(*r).unwrap();
+                    print_card(msg, card);
+                }
             }
-
-
         }
     }
 });

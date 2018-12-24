@@ -40,7 +40,11 @@ fn main() {
             .cmd("multiply", commands::misc::multiply)
             .cmd("poll", commands::poll::poll)
             .cmd("random", commands::dota::random)
-            .cmd("tips", commands::tip::tip_log)
+            .group("Tips", |g| {
+                g.prefix("tips")
+                    .command("log", |c| c.cmd(commands::tip::tip_log))
+                    .command("profile", |c| c.cmd(commands::tip::profile))
+            })
             .cmd("tip", commands::tip::tip)
             .cmd("antitip", commands::tip::tip)
             .cmd("profile", commands::tip::profile)

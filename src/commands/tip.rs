@@ -162,9 +162,27 @@ command!(profile(_ctx, msg, msg_args) {
                                                .thumbnail(
                                                    ava_url
                                                    )
-                                               .field("Lifetime Tips Recieved",
+                                               .field("Tips Recieved: All Time",
                                                       tip_user.lifetime_tips,
+                                                      true)
+                                               .field("Tips Recieved: This Week",
+                                                      tip_user.week_tips,
+                                                      true)
+                                               .field("Tips Given: All Time",
+                                                      tip_user.tips_given,
                                                       false)
+                                               .field("Weekly Tips Remaining",
+                                                      tip_user.tips_to_give,
+                                                      true)
+                                               .field("Anti Tips Given: All Time",
+                                                      tip_user.anti_tips_given,
+                                                      true)
+                                               .field("Weekly Anti Tips Remaining",
+                                                      tip_user.anti_tips,
+                                                      true)
+                                               .color(
+                                                    serenity::utils::Colour::GOLD
+                                                )
                                                ));
 
 });

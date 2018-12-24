@@ -48,10 +48,10 @@ fn main() {
             .cmd("tip", commands::tip::tip)
             .cmd("antitip", commands::tip::tip)
             .cmd("profile", commands::tip::profile)
-            .cmd("card", commands::artifact::card)
+            .cmd("card", commands::artifact::get_card)
             .group("Artifact", |g| {
                 g.prefix("artifact")
-                    .command("card", |c| c.cmd(commands::artifact::card))
+                    .command("card", |c| c.cmd(commands::artifact::get_card))
             }),
     );
 

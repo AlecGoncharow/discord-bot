@@ -11,7 +11,11 @@ extern crate regex;
 extern crate serde_json;
 
 use artifact_lib::Artifact;
-use serenity::{framework::StandardFramework, model::gateway::Ready, prelude::*};
+use serenity::{
+    framework::StandardFramework,
+    model::{channel::Message, gateway::Ready},
+    prelude::*,
+};
 use std::env;
 
 mod commands;
@@ -25,6 +29,10 @@ impl EventHandler for Handler {
     fn ready(&self, _: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
         println!("{:?}", ARTIFACT.card_from_name("drow ranger").unwrap());
+    }
+
+    fn message(&self, _ctx: Context, _new_message: Message) {
+        println!("{}", _new_message.content);
     }
 }
 fn main() {

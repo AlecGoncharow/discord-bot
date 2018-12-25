@@ -27,11 +27,21 @@ fn print_card(msg: &serenity::model::channel::Message, named_card: &artifact_lib
         let break_lines = line_break.replace_all(&text, "\n");
         let desc = html.replace_all(&break_lines, "");
         let info = if current.card_type == "Creep" {
-            format!("Health: {}, Armor: {}, Damage: {}", current.hit_points, current.armor, current.attack)
+            format!("Health: {}, Armor: {}, Damage: {}",current.hit_points, current.armor, current.attack)
         } else if current.card_type == "Spell" {
+
             format!("Mana Cost: {}", current.mana_cost)
         } else if current.card_type == "Item" {
             format!("Gold Cost: {}", current.gold_cost)
+        } else if current.card_type == "Ability" {
+            let cooldown = Regex::new(r"Active (\d+)").unwrap();
+            match cooldown.captures(&named_card.card_text.english) {
+                Some(m) => { 
+                    let cd = m.get(1).unwrap().as_str();
+                    format!("Cooldown: {}", cd)                    
+                }
+                None => String::from("")
+            }
         } else {
             String::from("")
         };

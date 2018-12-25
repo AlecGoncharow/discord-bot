@@ -119,7 +119,7 @@ command!(get_card(_ctx, msg, msg_args) {
                             (
                                 format!("{}: {}", named_card.card_type, named_card.card_name.english),
                                 format!("{}", desc),
-                                true
+                                false
                             )
                         );
 

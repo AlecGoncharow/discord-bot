@@ -38,7 +38,7 @@ fn print_card(msg: &serenity::model::channel::Message, named_card: &artifact_lib
         fields.push((
                 format!("{}: {}", current.card_type, current.card_name.english),
                 format!("{}\n{}", desc, info),
-                true
+                false
         ));
     }
 
@@ -137,7 +137,7 @@ command!(get_card(_ctx, msg, msg_args) {
                                     (
                                         format!("{}: {}", named_card.card_type, named_card.card_name.english),
                                         format!("{}", desc),
-                                        true
+                                        false
                                     )
                                 );
                                 break;

@@ -1,5 +1,4 @@
 use rand::prelude::*;
-use serenity::utils::MessageBuilder;
 use std::fs::File;
 use std::path::Path;
 
@@ -31,11 +30,10 @@ command!(random(_ctx, msg) {
     let y: u8 = rng.gen_range(0, data.count);
     let hero = heroes.get(y as usize).unwrap();
 
-    let mut content = MessageBuilder::new()
-                            .push(&hero.url_full_portrait)
-                            .push("\n```md\n#####\t")
-                            .push(&hero.localized_name)
-                            .push("\t#####\n```")
-                            .build();
-    let _ = msg.reply(&content);
+    let _ = msg.channel_id.send_message(|m| m
+                      .embed(|e| e
+                             .description(&hero.localized_name)
+                             .title(&msg.author.name)
+                             .image(&hero.url_full_portrait)
+                      ));
 });

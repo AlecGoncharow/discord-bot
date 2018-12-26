@@ -180,6 +180,10 @@ command!(handle_tip(_ctx, msg, msg_args) {
                 let _ = msg.reply("you can't tip yourself lol");
                 false
             }
+            TipResult::NoTips => {
+                let _ = msg.reply("you are out of that kind of tip for this week");
+                false
+            }
             TipResult::Ok => true,
             _ => false,
         };
@@ -198,7 +202,7 @@ command!(handle_tip(_ctx, msg, msg_args) {
 
             send_response(&tip, msg);
             tips_log.tips.push(tip);
-            write_log(&tips_log);
+            write_log(tips_log);
         }
     }
 });
@@ -308,19 +312,19 @@ fn get_log() -> Tips {
     }
 }
 
-fn write_data(tip_data: &Data) -> TipResult {
+fn write_data(tip_data: Data) -> TipResult {
     let path = Path::new("./data/tips/tips.json");
     let writer = BufWriter::new(OpenOptions::new().write(true).open(path).unwrap());
-    match serde_json::to_writer(writer, tip_data) { 
+    match serde_json::to_writer(writer, &tip_data) { 
         Ok(_) => TipResult::Ok,
         Err(_) => TipResult::WriteErr,
     }
 }
 
-fn write_log(log_data: &Tips) -> TipResult {
+fn write_log(log_data: Tips) -> TipResult {
     let log_path = Path::new("./data/tips/log.json");
     let log_writer = BufWriter::new(OpenOptions::new().write(true).open(log_path).unwrap());
-    match serde_json::to_writer(log_writer, log_data) {
+    match serde_json::to_writer(log_writer, &log_data) {
         Ok(_) => TipResult::Ok,
         Err(_) => TipResult::WriteErr,
     }
@@ -349,7 +353,7 @@ fn reset_tips(time: std::time::Duration, old_data: Data) -> TipResult {
         new_time += SECONDS_IN_WEEK
     };
 
-    write_data(&Data {
+    write_data(Data {
         reset_time: new_time,
         users: new_users,
     })
@@ -360,7 +364,7 @@ fn create_user(id: u64, mut data: Data) -> User {
     user.user_id = id;
     
     data.users.push(user);
-    write_data(&data);
+    write_data(data);
 
     get_user(id)
 }
@@ -408,5 +412,5 @@ fn update_user(id: u64, action: TipAction) -> TipResult {
             }
         }
     }
-    write_data(&data)
+    write_data(data)
 }

@@ -57,9 +57,11 @@ fn main() {
             .cmd("antitip", commands::tip::tip)
             .cmd("profile", commands::tip::profile)
             .cmd("card", commands::artifact::get_card)
+            .cmd("deck", commands::artifact::get_deck)
             .group("Artifact", |g| {
                 g.prefix("artifact")
                     .command("card", |c| c.cmd(commands::artifact::get_card))
+                    .command("deck", |c| c.cmd(commands::artifact::get_deck))
             }),
     );
 

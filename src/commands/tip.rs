@@ -394,9 +394,9 @@ command!(tip(_ctx, msg, msg_args) {
                 };
 
                 tip_data.tips.push(transaction);
+                let log_writer = BufWriter::new(OpenOptions::new().write(true).open(log_path).unwrap());
+                let _ = serde_json::to_writer(log_writer, &tip_data);
             }
-            let log_writer = BufWriter::new(OpenOptions::new().write(true).open(log_path).unwrap());
-            let _ = serde_json::to_writer(log_writer, &tip_data);
         }
     }
 });

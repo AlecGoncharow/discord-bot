@@ -175,26 +175,36 @@ command!(handle_tip(_ctx, msg, msg_args) {
             _ => panic!("Something terrible has happened"),
         };
         let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-        transact_tip(*tipper_id.as_u64(), *tipee_id.as_u64(), is_anti);
-        let mut tips_log = get_log();
-        let tipee_user = tipee_id.to_user().unwrap();
-        let tipper_user = tipper_id.to_user().unwrap();
-        let tip = Tip {
-            tipper_id: *tipper_id.as_u64(),
-            tipper_name: tipper_user.name,
-            tipee_id: *tipee_id.as_u64(),
-            tipee_name: tipee_user.name,
-            time: time.as_secs(),
-            is_anti,
+        let success = match transact_tip(*tipper_id.as_u64(), *tipee_id.as_u64(), is_anti) {
+            TipResult::SameId => {
+                let _ = msg.reply("you can't tip yourself lol");
+                false
+            }
+            TipResult::Ok => true,
+            _ => false,
         };
+        if success {
+            let mut tips_log = get_log();
+            let tipee_user = tipee_id.to_user().unwrap();
+            let tipper_user = tipper_id.to_user().unwrap();
+            let tip = Tip {
+                tipper_id: *tipper_id.as_u64(),
+                tipper_name: tipper_user.name,
+                tipee_id: *tipee_id.as_u64(),
+                tipee_name: tipee_user.name,
+                time: time.as_secs(),
+                is_anti,
+            };
 
-        send_response(&tip, msg);
-        tips_log.tips.push(tip);
-        write_log(&tips_log);
+            send_response(&tip, msg);
+            tips_log.tips.push(tip);
+            write_log(&tips_log);
+        }
     }
 });
 
 fn send_response(tip: &Tip, msg: &serenity::model::channel::Message) {
+    let data = get_data();
     let tipper = get_user(tip.tipper_id);
     let tipee = get_user(tip.tipee_id);
     let tipee_disc = serenity::model::id::UserId(tip.tipee_id);
@@ -235,6 +245,10 @@ fn send_response(tip: &Tip, msg: &serenity::model::channel::Message) {
                                                .field(format!("{} Tips Recieved", tip.tipee_name),
                                                       format!("lifetime net: {}\n lifetime gross: {}\nweek net: {}\nweek gross: {}", tipee.lifetime_net, tipee.lifetime_gross, tipee.week_net, tipee.week_gross),
                                                       false)
+                                               .field("Weekly Reset Time",
+                                                      Local.timestamp(data.reset_time as i64, 0 ),
+                                                      false
+                                                      )
                                                .color(
                                                     serenity::utils::Colour::GOLD
                                                 )

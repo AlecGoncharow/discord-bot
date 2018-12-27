@@ -9,6 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 const SECONDS_IN_WEEK: u64 = 604800;
 const WEEKLY_TIPS: u8 = 7;
 const WEEKLY_ANTI_TIPS: u8 = 1;
+const CHANNEL: u64 = 527728791876009994;
 
 #[derive(Serialize, Deserialize, Clone)]
 struct User {
@@ -160,7 +161,7 @@ enum TipAction {
 command!(handle_tip(_ctx, msg, msg_args) {
     match check_tips() {
         TipResult::Ok => println!("tips up to date"),
-        _ => panic!("something terrible has happened"),
+        _ => println!("something terrible has happened"),
     }
     let is_anti = msg.content.starts_with("-anti");
     let is_tip = match msg_args.single_n::<serenity::model::id::UserId>() {
@@ -208,6 +209,7 @@ command!(handle_tip(_ctx, msg, msg_args) {
 });
 
 fn send_response(tip: &Tip, msg: &serenity::model::channel::Message) {
+    let channel_id = serenity::model::id::ChannelId(CHANNEL);
     let data = get_data();
     let tipper = get_user(tip.tipper_id);
     let tipee = get_user(tip.tipee_id);
@@ -235,7 +237,7 @@ fn send_response(tip: &Tip, msg: &serenity::model::channel::Message) {
     } else {
         format!("lifetime tips given: {}\nweekly tips left to give: {}", tipper.tips_given, tipper.tips)  
     };
-    let _ = msg.channel_id.send_message(|m| m
+    let _ = channel_id.send_message(|m| m
                                         .embed(|e| e
                                                .title(format!("{} {} {}", tip.tipper_name,
                                                               tip_text,
@@ -249,10 +251,12 @@ fn send_response(tip: &Tip, msg: &serenity::model::channel::Message) {
                                                .field(format!("{} Tips Recieved", tip.tipee_name),
                                                       format!("lifetime net: {}\n lifetime gross: {}\nweek net: {}\nweek gross: {}", tipee.lifetime_net, tipee.lifetime_gross, tipee.week_net, tipee.week_gross),
                                                       false)
+                                                
                                                .field("Weekly Reset Time",
                                                       Local.timestamp(data.reset_time as i64, 0 ),
                                                       false
                                                       )
+                                                
                                                .color(
                                                     serenity::utils::Colour::GOLD
                                                 )
@@ -349,9 +353,10 @@ fn reset_tips(time: std::time::Duration, old_data: Data) -> TipResult {
                                                    user
                                                 }).collect();
     let mut new_time = old_time;
-    while time.as_secs() > old_time {
+    while time.as_secs() > new_time {
         new_time += SECONDS_IN_WEEK
     };
+    println!("{:?}", new_time);
 
     write_data(Data {
         reset_time: new_time,

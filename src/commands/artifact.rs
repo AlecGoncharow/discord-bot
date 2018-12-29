@@ -8,9 +8,9 @@ fn print_card(msg: &serenity::model::channel::Message, named_card: &artifact_lib
         Colour::DARK_GREEN
     } else if named_card.is_blue {
         Colour::DARK_BLUE
-    } else if named_card.is_black { 
+    } else if named_card.is_black {
         Colour::DARK_PURPLE
-    } else if named_card.gold_cost != 0{
+    } else if named_card.gold_cost != 0 {
         Colour::GOLD
     } else {
         Colour::LIGHT_GREY
@@ -22,21 +22,22 @@ fn print_card(msg: &serenity::model::channel::Message, named_card: &artifact_lib
         let current: &artifact_lib::Card = crate::ARTIFACT.card_from_id(r).unwrap();
         let desc = get_description(&current);
         let info = get_info(&current, &named_card);
-            fields.push((
-                format!("{}: {}", current.card_type, current.card_name.english),
-                format!("{}\n{}", desc, info),
-                false
+        fields.push((
+            format!("{}: {}", current.card_type, current.card_name.english),
+            format!("{}\n{}", desc, info),
+            false,
         ));
     }
 
-    let _ = msg.channel_id.send_message(|m| m
-                                        .embed(|e| e
-                                               .title(&named_card.card_name.english)
-                                               .color(color)
-                                               .fields(fields)
-                                               .thumbnail(&named_card.mini_image.default)
-                                               .image(&named_card.large_image.default)
-                                               ));
+    let _ = msg.channel_id.send_message(|m| {
+        m.embed(|e| {
+            e.title(&named_card.card_name.english)
+                .color(color)
+                .fields(fields)
+                .thumbnail(&named_card.mini_image.default)
+                .image(&named_card.large_image.default)
+        })
+    });
 }
 
 fn get_description(named_card: &artifact_lib::Card) -> String {
@@ -49,30 +50,37 @@ fn get_description(named_card: &artifact_lib::Card) -> String {
 
 fn get_info(named_card: &artifact_lib::Card, parent: &artifact_lib::Card) -> String {
     match named_card.card_type.as_str() {
-        "Hero" => format!("Health: {}, Armor: {}, Damage: {}",named_card.hit_points, 
-                           named_card.armor, named_card.attack),
-        "Creep" => format!("Mana Cost: {}, Health: {}, Armor: {}, Damage: {}", named_card.mana_cost,
-                           named_card.hit_points, named_card.armor, named_card.attack),
+        "Hero" => format!(
+            "Health: {}, Armor: {}, Damage: {}",
+            named_card.hit_points, named_card.armor, named_card.attack
+        ),
+        "Creep" => format!(
+            "Mana Cost: {}, Health: {}, Armor: {}, Damage: {}",
+            named_card.mana_cost, named_card.hit_points, named_card.armor, named_card.attack
+        ),
         "Spell" => format!("Mana Cost: {}", named_card.mana_cost),
-        "Item" => format!("Gold Cost: {}, Type: {}", named_card.gold_cost, named_card.sub_type),
+        "Item" => format!(
+            "Gold Cost: {}, Type: {}",
+            named_card.gold_cost, named_card.sub_type
+        ),
         "Ability" => {
             let cooldown = Regex::new(r"Active (\d+)").unwrap();
             match cooldown.captures(&parent.card_text.english) {
-                Some(m) => { 
+                Some(m) => {
                     let cd = m.get(1).unwrap().as_str();
-                    format!("Cooldown: {}", cd)                    
+                    format!("Cooldown: {}", cd)
                 }
-                None => String::from("")
+                None => String::from(""),
             }
         }
-        _ => String::from("")
+        _ => String::from(""),
     }
 }
 
-fn get_references(card: &artifact_lib::Card, refs:&mut Vec<u32>) {
+fn get_references(card: &artifact_lib::Card, refs: &mut Vec<u32>) {
     for r in &card.references {
         if !refs.contains(&r.card_id) {
-            refs.push(r.card_id);   
+            refs.push(r.card_id);
             let child = crate::ARTIFACT.card_from_id(r.card_id).unwrap();
             get_references(&child, refs);
         }
@@ -89,15 +97,15 @@ command!(get_deck(_ctx, msg, _msg_args) {
         deck.cards.sort();
         println!("{:?}", deck);
         /*
-        let image_url = format!("https://www.playartifact.com/thumbnail/{}_{}_{}_{}_{}",
-                                    deck.heroes[0].card.card_id,
-                                    deck.heroes[1].card.card_id,
-                                    deck.heroes[2].card.card_id,
-                                    deck.heroes[3].card.card_id,
-                                    deck.heroes[4].card.card_id,
-                                    );
+           let image_url = format!("https://www.playartifact.com/thumbnail/{}_{}_{}_{}_{}",
+           deck.heroes[0].card.card_id,
+           deck.heroes[1].card.card_id,
+           deck.heroes[2].card.card_id,
+           deck.heroes[3].card.card_id,
+           deck.heroes[4].card.card_id,
+           );
 
-        */
+*/
         let mut fields: Vec<(String, String, bool)> = Vec::new();
 
         for hero in &deck.heroes {
@@ -108,7 +116,7 @@ command!(get_deck(_ctx, msg, _msg_args) {
                     title,
                     format!("{}", desc),
                     false,
-                    ));
+            ));
         }
 
         for card in &deck.cards {
@@ -118,17 +126,17 @@ command!(get_deck(_ctx, msg, _msg_args) {
                     title,
                     format!("{}", desc),
                     false,
-                    ));
+            ));
         }
         let name = deck.name.clone();
 
         println!("{:?}", fields);
 
         let res = msg.channel_id.send_message(|m| m
-                                        .embed(|e| e
-                                               .title(&name)
-                                               .fields(fields)
-                                        ));
+                                              .embed(|e| e
+                                                     .title(&name)
+                                                     .fields(fields)
+                                              ));
         println!("{:?}",res);
     }
 });
@@ -150,24 +158,9 @@ command!(get_card(_ctx, msg, msg_args) {
             else if count == 1 {
                 let (_, named_card_wrapped) = matches.next().unwrap();
 
-                if named_card_wrapped.is_single() {
-                    let named_card = match named_card_wrapped { 
-                        artifact_lib::NamedCard::Single(s) => s,
-                        _ => panic!("something terrible has happened"),
-                    };
-                    print_card(msg, named_card);
-                } else {
-                    let value = match named_card_wrapped {
-                        artifact_lib::NamedCard::Multiple(m) => m,
-                        _ => panic!("something terrible has happened"),
-                    };
-                    for card in value {
-                        if card.large_image.default != "" {
-                            print_card(msg, &card);
-                            break;
-                        }
-                    }
-                }
+                let named_card = named_card_wrapped.clone().into_card().unwrap();
+                print_card(msg, &named_card);
+
             } else {
                 let mut fields = Vec::new();
                 let mut count = 0;
@@ -176,48 +169,25 @@ command!(get_card(_ctx, msg, msg_args) {
                         break;
                     }
 
-                    if card.is_single() {
-                        let named_card = match card { 
-                            artifact_lib::NamedCard::Single(s) => s,
-                            _ => panic!("something terrible has happened"),
-                        };
-                        let desc = get_description(&named_card);
-                        fields.push(
-                            (
-                                format!("{}: {}", named_card.card_type, named_card.card_name.english),
-                                format!("{}", desc),
-                                false
-                            )
-                        );
+                    let named_card = card.clone().into_card().unwrap();
 
-                    } else {
-                        let value = match card {
-                            artifact_lib::NamedCard::Multiple(m) => m,
-                            _ => panic!("something terrible has happened"),
-                        };
-                        for named_card in value {
-                            if named_card.large_image.default != "" {
-                                let desc = get_description(&named_card);
-                                fields.push(
-                                    (
-                                        format!("{}: {}", named_card.card_type, named_card.card_name.english),
-                                        format!("{}", desc),
-                                        false
-                                    )
-                                );
-                                break;
-                            }
-                    }
-                }
+                    let desc = get_description(&named_card);
+                    fields.push(
+                        (
+                            format!("{}: {}", named_card.card_type, named_card.card_name.english),
+                            format!("{}", desc),
+                            false
+                        )
+                    );
 
                     count += 1;
                 }
                 let res = msg.channel_id.send_message(|m| m
-                                        .embed(|e| e
-                                               .title(&format!("Cards matching {}:"
-                                                               , card_name))
-                                               .fields(fields)
-                                               ));
+                                                      .embed(|e| e
+                                                             .title(&format!("Cards matching {}:"
+                                                                             , card_name))
+                                                             .fields(fields)
+                                                      ));
                 match res {
                     Err(_) => {let _ = msg.reply("Too vague of a query, try to be more specific");}
                     Ok(_) => (),
@@ -226,24 +196,8 @@ command!(get_card(_ctx, msg, msg_args) {
         } else {
             let named_card_wrapped: &artifact_lib::NamedCard = lookup.unwrap();
 
-            if named_card_wrapped.is_single() {
-                let named_card = match named_card_wrapped { 
-                    artifact_lib::NamedCard::Single(s) => s,
-                    _ => panic!("something terrible has happened"),
-                };
-                print_card(msg, named_card);
-            } else {
-                let value = match named_card_wrapped {
-                    artifact_lib::NamedCard::Multiple(m) => m,
-                    _ => panic!("something terrible has happened"),
-                };
-                for card in value {
-                    if card.large_image.default != "" {
-                        print_card(msg, &card);
-                        break;
-                    }
-                }
-            }
+            let named_card = named_card_wrapped.clone().into_card().unwrap();
+            print_card(msg, &named_card);
         }
     }
 });

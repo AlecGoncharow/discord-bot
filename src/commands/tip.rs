@@ -1,8 +1,8 @@
+use chrono::{Local, TimeZone};
 use serenity::utils::MessageBuilder;
 use std::fs::OpenOptions;
 use std::io::BufWriter;
 use std::path::Path;
-use chrono::{Local, TimeZone};
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -150,19 +150,24 @@ enum TipResult {
     Ok,
     SameId,
     NoTips,
-    WriteErr,
+    WriteErr(String),
 }
 
 enum TipAction {
     Give(bool),
-    Recieve(bool),
+    Receive(bool),
 }
 
 command!(handle_tip(_ctx, msg, msg_args) {
+    let user = serenity::model::id::UserId(crate::DEV_ID).to_user().unwrap();
     match check_tips() {
         TipResult::Ok => println!("tips up to date"),
-        _ => println!("something terrible has happened"),
-    }
+        TipResult::WriteErr(e) => {
+            let _ = user.direct_message(|m| m.content(e));
+        }
+        _ => println!("Something terrible has happened")
+     }
+
     let is_anti = msg.content.starts_with("-anti");
     let is_tip = match msg_args.single_n::<serenity::model::id::UserId>() {
         Ok(_) => true,
@@ -208,7 +213,7 @@ command!(handle_tip(_ctx, msg, msg_args) {
     }
 });
 
-fn send_response(tip: &Tip, msg: &serenity::model::channel::Message) {
+fn send_response(tip: &Tip, _msg: &serenity::model::channel::Message) {
     let channel_id = serenity::model::id::ChannelId(CHANNEL);
     let data = get_data();
     let tipper = get_user(tip.tipper_id);
@@ -220,11 +225,7 @@ fn send_response(tip: &Tip, msg: &serenity::model::channel::Message) {
     } else {
         avatar.as_str()
     };
-    let tip_text = if tip.is_anti {
-        "anti-tipped"
-    } else {
-        "tipped"
-    };
+    let tip_text = if tip.is_anti { "anti-tipped" } else { "tipped" };
 
     let giver_title = if tip.is_anti {
         format!("{} Anti-Tips Given", tip.tipper_name)
@@ -233,35 +234,40 @@ fn send_response(tip: &Tip, msg: &serenity::model::channel::Message) {
     };
 
     let giver_desc = if tip.is_anti {
-        format!("lifetime anti-tips given: {}\nweekly anti-tips left to give: {}", tipper.anti_tips_given, tipper.anti_tips)  
+        format!(
+            "lifetime anti-tips given: {}\nweekly anti-tips left to give: {}",
+            tipper.anti_tips_given, tipper.anti_tips
+        )
     } else {
-        format!("lifetime tips given: {}\nweekly tips left to give: {}", tipper.tips_given, tipper.tips)  
+        format!(
+            "lifetime tips given: {}\nweekly tips left to give: {}",
+            tipper.tips_given, tipper.tips
+        )
     };
-    let _ = channel_id.send_message(|m| m
-                                        .embed(|e| e
-                                               .title(format!("{} {} {}", tip.tipper_name,
-                                                              tip_text,
-                                                              tip.tipee_name))
-                                               .thumbnail(
-                                                   ava_url
-                                                   )
-                                               .field(giver_title,
-                                                      giver_desc,
-                                                      false)
-                                               .field(format!("{} Tips Recieved", tip.tipee_name),
-                                                      format!("lifetime net: {}\n lifetime gross: {}\nweek net: {}\nweek gross: {}", tipee.lifetime_net, tipee.lifetime_gross, tipee.week_net, tipee.week_gross),
-                                                      false)
-                                                
-                                               .field("Weekly Reset Time",
-                                                      Local.timestamp(data.reset_time as i64, 0 ),
-                                                      false
-                                                      )
-                                                
-                                               .color(
-                                                    serenity::utils::Colour::GOLD
-                                                )
-                                               ));
-
+    let _ = channel_id.send_message(|m| {
+        m.embed(|e| {
+            e.title(format!(
+                "{} {} {}",
+                tip.tipper_name, tip_text, tip.tipee_name
+            ))
+            .thumbnail(ava_url)
+            .field(giver_title, giver_desc, false)
+            .field(
+                format!("{} Tips Recieved", tip.tipee_name),
+                format!(
+                    "lifetime net: {}\n lifetime gross: {}\nweek net: {}\nweek gross: {}",
+                    tipee.lifetime_net, tipee.lifetime_gross, tipee.week_net, tipee.week_gross
+                ),
+                false,
+            )
+            .field(
+                "Weekly Reset Time",
+                Local.timestamp(data.reset_time as i64, 0),
+                false,
+            )
+            .color(serenity::utils::Colour::GOLD)
+        })
+    });
 }
 
 fn transact_tip(tipper_id: u64, tipee_id: u64, is_anti: bool) -> TipResult {
@@ -279,7 +285,7 @@ fn transact_tip(tipper_id: u64, tipee_id: u64, is_anti: bool) -> TipResult {
     }
 
     update_user(tipper_id, TipAction::Give(is_anti));
-    update_user(tipee_id, TipAction::Recieve(is_anti));
+    update_user(tipee_id, TipAction::Receive(is_anti));
 
     TipResult::Ok
 }
@@ -289,7 +295,11 @@ fn get_data() -> Data {
     let path = Path::new("./data/tips/tips.json");
     let json = match OpenOptions::new().write(true).read(true).open(path) {
         Ok(f) => f,
-        Err(_) => OpenOptions::new().write(true).create(true).open(path).expect("Error creating file"),
+        Err(_) => OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(path)
+            .expect("Error creating file"),
     };
 
     match serde_json::from_reader(json) {
@@ -297,7 +307,7 @@ fn get_data() -> Data {
         Err(_) => Data {
             reset_time: time.as_secs() + SECONDS_IN_WEEK,
             users: Vec::new(),
-        }
+        },
     }
 }
 
@@ -305,23 +315,25 @@ fn get_log() -> Tips {
     let log_path = Path::new("./data/tips/log.json");
     let json_log = match OpenOptions::new().write(true).read(true).open(log_path) {
         Ok(f) => f,
-        Err(_) => OpenOptions::new().write(true).create(true).open(log_path).expect("Error creating log file"),
+        Err(_) => OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(log_path)
+            .expect("Error creating log file"),
     };
 
     match serde_json::from_reader(json_log) {
         Ok(j) => j,
-        Err(_) => Tips {
-            tips: Vec::new()
-        }
+        Err(_) => Tips { tips: Vec::new() },
     }
 }
 
 fn write_data(tip_data: Data) -> TipResult {
     let path = Path::new("./data/tips/tips.json");
     let writer = BufWriter::new(OpenOptions::new().write(true).open(path).unwrap());
-    match serde_json::to_writer(writer, &tip_data) { 
+    match serde_json::to_writer(writer, &tip_data) {
         Ok(_) => TipResult::Ok,
-        Err(_) => TipResult::WriteErr,
+        Err(e) => TipResult::WriteErr(e.to_string()),
     }
 }
 
@@ -330,7 +342,7 @@ fn write_log(log_data: Tips) -> TipResult {
     let log_writer = BufWriter::new(OpenOptions::new().write(true).open(log_path).unwrap());
     match serde_json::to_writer(log_writer, &log_data) {
         Ok(_) => TipResult::Ok,
-        Err(_) => TipResult::WriteErr,
+        Err(e) => TipResult::WriteErr(e.to_string()),
     }
 }
 
@@ -345,17 +357,21 @@ fn check_tips() -> TipResult {
 
 fn reset_tips(time: std::time::Duration, old_data: Data) -> TipResult {
     let old_time = old_data.reset_time;
-    let new_users = old_data.users.into_iter().map(|mut user| {
-                                                   user.tips = WEEKLY_TIPS;
-                                                   user.anti_tips = WEEKLY_ANTI_TIPS;
-                                                   user.week_gross = 0;
-                                                   user.week_net = 0;
-                                                   user
-                                                }).collect();
+    let new_users = old_data
+        .users
+        .into_iter()
+        .map(|mut user| {
+            user.tips = WEEKLY_TIPS;
+            user.anti_tips = WEEKLY_ANTI_TIPS;
+            user.week_gross = 0;
+            user.week_net = 0;
+            user
+        })
+        .collect();
     let mut new_time = old_time;
     while time.as_secs() > new_time {
         new_time += SECONDS_IN_WEEK
-    };
+    }
     println!("{:?}", new_time);
 
     write_data(Data {
@@ -367,7 +383,7 @@ fn reset_tips(time: std::time::Duration, old_data: Data) -> TipResult {
 fn create_user(id: u64, mut data: Data) -> User {
     let mut user = User::default();
     user.user_id = id;
-    
+
     data.users.push(user);
     write_data(data);
 
@@ -383,7 +399,6 @@ fn get_user(id: u64) -> User {
     } else {
         create_user(id, data)
     }
-
 }
 
 fn update_user(id: u64, action: TipAction) -> TipResult {
@@ -404,7 +419,7 @@ fn update_user(id: u64, action: TipAction) -> TipResult {
                     user.tips_given += 1;
                 }
             }
-            TipAction::Recieve(is_anti) => {
+            TipAction::Receive(is_anti) => {
                 if is_anti {
                     user.week_net -= 1;
                     user.lifetime_net -= 1;

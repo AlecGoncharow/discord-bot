@@ -1,7 +1,6 @@
 use chrono::{Local, TimeZone};
 use serenity::utils::MessageBuilder;
 use std::fs::OpenOptions;
-use std::io::BufWriter;
 use std::path::Path;
 
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -183,7 +182,12 @@ command!(handle_tip(_ctx, msg, msg_args) {
         let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         let success = match transact_tip(*tipper_id.as_u64(), *tipee_id.as_u64(), is_anti) {
             TipResult::SameId => {
-                let _ = msg.reply("you can't tip yourself lol");
+                if is_anti {
+                    let _ = msg.reply("https://www.youtube.com/watch?v=9Deg7VrpHbM");
+                }
+                else {
+                    let _ = msg.reply("you can't tip yourself lol");
+                }
                 false
             }
             TipResult::NoTips => {
@@ -330,7 +334,7 @@ fn get_log() -> Tips {
 
 fn write_data(tip_data: Data) -> TipResult {
     let path = Path::new("./data/tips/tips.json");
-    let writer = BufWriter::new(OpenOptions::new().write(true).open(path).unwrap());
+    let writer = OpenOptions::new().write(true).open(path).unwrap();
     match serde_json::to_writer(writer, &tip_data) {
         Ok(_) => TipResult::Ok,
         Err(e) => TipResult::WriteErr(e.to_string()),
@@ -339,7 +343,7 @@ fn write_data(tip_data: Data) -> TipResult {
 
 fn write_log(log_data: Tips) -> TipResult {
     let log_path = Path::new("./data/tips/log.json");
-    let log_writer = BufWriter::new(OpenOptions::new().write(true).open(log_path).unwrap());
+    let log_writer = OpenOptions::new().write(true).open(log_path).unwrap();
     match serde_json::to_writer(log_writer, &log_data) {
         Ok(_) => TipResult::Ok,
         Err(e) => TipResult::WriteErr(e.to_string()),

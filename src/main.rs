@@ -4,13 +4,12 @@ extern crate serenity;
 extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
-extern crate artifact_lib;
 extern crate chrono;
 extern crate rand;
 extern crate regex;
 extern crate serde_json;
+extern crate reqwest;
 
-use artifact_lib::Artifact;
 use serenity::{
     framework::StandardFramework,
     model::{channel::Message, gateway::Ready},
@@ -21,21 +20,17 @@ use std::env;
 mod commands;
 struct Handler;
 
-lazy_static! {
-    static ref ARTIFACT: Artifact = Artifact::new();
-}
 static DEV_ID: u64 = 198321762537177088;
 
 impl EventHandler for Handler {
-    fn ready(&self, _: Context, ready: Ready) {
-        println!("{} is connected!", ready.user.name);
-        println!("{:?}", ARTIFACT.card_from_name("drow ranger").unwrap());
-    }
-
     fn message(&self, _ctx: Context, _new_message: Message) {
         println!("{}", _new_message.content);
     }
+    fn ready(&self, _: Context, ready: Ready) {
+        println!("{} is connected!", ready.user.name);
+    }
 }
+
 fn main() {
     // Login with a bot token from the environment
     let mut client = Client::new(&env::var("DISCORD_BOT_TOKEN").expect("token"), Handler)
@@ -51,19 +46,11 @@ fn main() {
             .cmd("random", commands::dota::random)
             .group("Tips", |g| {
                 g.prefix("tips")
-                    .command("log", |c| c.cmd(commands::tip::tip_log))
                     .command("profile", |c| c.cmd(commands::tip::profile))
             })
             .cmd("tip", commands::tip::handle_tip)
             .cmd("antitip", commands::tip::handle_tip)
             .cmd("profile", commands::tip::profile)
-            .cmd("card", commands::artifact::get_card)
-            .cmd("deck", commands::artifact::get_deck)
-            .group("Artifact", |g| {
-                g.prefix("artifact")
-                    .command("card", |c| c.cmd(commands::artifact::get_card))
-                    .command("deck", |c| c.cmd(commands::artifact::get_deck))
-            }),
     );
     let user = serenity::model::id::UserId(DEV_ID).to_user().unwrap();
 

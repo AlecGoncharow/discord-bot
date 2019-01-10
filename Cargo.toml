@@ -11,5 +11,5 @@ serde_json = "1.0"
 serde_derive = "1.0"
 lazy_static = "1.2.0"
 chrono = "0.4"
-artifact_lib = { git = "https://github.com/AlecGoncharow/artifact_lib" }
 regex = "*"
+reqwest = "*"

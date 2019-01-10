@@ -7,8 +7,8 @@ extern crate lazy_static;
 extern crate chrono;
 extern crate rand;
 extern crate regex;
-extern crate serde_json;
 extern crate reqwest;
+extern crate serde_json;
 
 use serenity::{
     framework::StandardFramework,
@@ -37,9 +37,10 @@ fn main() {
         .expect("Error creating client");
     client.with_framework(
         StandardFramework::new()
-            .configure(|c| c
-                .prefix("-")
-                .owners(vec![UserId(DEV_ID)].into_iter().collect())) // set the bot's prefix to "-"
+            .configure(|c| {
+                c.prefix("-")
+                    .owners(vec![UserId(DEV_ID)].into_iter().collect())
+            }) // set the bot's prefix to "-"
             .cmd("ping", commands::misc::ping)
             .cmd("mort", commands::misc::mort)
             .cmd("morton", commands::misc::mort)
@@ -52,12 +53,11 @@ fn main() {
             })
             .group("Admin", |g| {
                 g.prefix("admin")
-                    .command("quit", |c| c.cmd(commands::admin::quit)
-                        .owners_only(true))
+                    .command("quit", |c| c.cmd(commands::admin::quit).owners_only(true))
             })
             .cmd("tip", commands::tip::handle_tip)
             .cmd("antitip", commands::tip::handle_tip)
-            .cmd("profile", commands::tip::profile)
+            .cmd("profile", commands::tip::profile),
     );
     let user = serenity::model::id::UserId(DEV_ID).to_user().unwrap();
 

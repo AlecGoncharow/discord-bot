@@ -60,7 +60,6 @@ struct Tips {
     tips: Vec<Tip>,
 }
 
-
 command!(profile(_ctx, msg, msg_args) {
     let is_other = match msg_args.single_n::<serenity::model::id::UserId>() {
         Ok(_) => true,
@@ -174,7 +173,6 @@ fn send_response(from: u64, to: u64, url: &str, is_anti: bool) {
         avatar.as_str()
     };
 
-
     let tip_text = if is_anti { "anti-tipped" } else { "tipped" };
     let giver_title = if is_anti {
         format!("{} Anti-Tips Given", tipper_disc.name)
@@ -212,7 +210,6 @@ fn send_response(from: u64, to: u64, url: &str, is_anti: bool) {
             .color(serenity::utils::Colour::GOLD)
         })
     });
-
 }
 
 fn transact_tip(tipper_id: u64, tipee_id: u64, is_anti: bool, url: &str, key: &str) -> TipResult {
@@ -224,12 +221,18 @@ fn transact_tip(tipper_id: u64, tipee_id: u64, is_anti: bool, url: &str, key: &s
     let tipee_user = get_user(tipee_id, url, key);
     if is_anti {
         if tipper_user.anti_tips == 0 {
-            return  TipResult::NoTips;
+            return TipResult::NoTips;
         }
-        reqwest::get(format!("{}/tips/anti_tip/{}/{}?key={}", url, tipper_id, tipee_id, key).as_str());
+        reqwest::get(
+            format!(
+                "{}/tips/anti_tip/{}/{}?key={}",
+                url, tipper_id, tipee_id, key
+            )
+            .as_str(),
+        );
     } else {
         if tipper_user.tips == 0 {
-            return  TipResult::NoTips;
+            return TipResult::NoTips;
         }
         reqwest::get(format!("{}/tips/tip/{}/{}?key={}", url, tipper_id, tipee_id, key).as_str());
     }
@@ -252,9 +255,9 @@ fn get_user(id: u64, url: &str, key: &str) -> User {
 
     let mut req = reqwest::get(format!("{}/tips/{}", url, id).as_str()).unwrap();
     println!("{:?}", req);
-    if req.status() == reqwest::StatusCode::NOT_FOUND{
+    if req.status() == reqwest::StatusCode::NOT_FOUND {
         create_user(id, url, key)
     } else {
-          req.json().unwrap()
+        req.json().unwrap()
     }
 }

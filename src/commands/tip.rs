@@ -157,9 +157,63 @@ command!(handle_tip(_ctx, msg, msg_args) {
             TipResult::Ok => true,
             _ => false,
         };
-        msg.reply(&format!("you tipped somebody who cares go look\nyou:{}/tips/{}\nother:{}/tips/{}", url, tipper_id, url, tipee_id));
+        send_response(*tipper_id.as_u64(), *tipee_id.as_u64(), url, is_anti);
     }
 });
+
+fn send_response(from: u64, to: u64, url: &str, is_anti: bool) {
+    let channel_id = serenity::model::id::ChannelId(CHANNEL);
+    let tipper = get_user(from, url, "");
+    let tipee = get_user(to, url, "");
+    let tipee_disc = serenity::model::id::UserId(to).to_user().unwrap();
+    let tipper_disc = serenity::model::id::UserId(from).to_user().unwrap();
+    let avatar = tipee_disc.face();
+    let ava_url = if avatar.ends_with(".webp?size=1024") {
+        &avatar[..avatar.len() - 15]
+    } else {
+        avatar.as_str()
+    };
+
+
+    let tip_text = if is_anti { "anti-tipped" } else { "tipped" };
+    let giver_title = if is_anti {
+        format!("{} Anti-Tips Given", tipper_disc.name)
+    } else {
+        format!("{} Tips Given", tipper_disc.name)
+    };
+
+    let giver_desc = if is_anti {
+        format!(
+            "lifetime anti-tips given: {}\nweekly anti-tips left to give: {}",
+            tipper.anti_tips_given, tipper.anti_tips
+        )
+    } else {
+        format!(
+            "lifetime tips given: {}\nweekly tips left to give: {}",
+            tipper.tips_given, tipper.tips
+        )
+    };
+    let _ = channel_id.send_message(|m| {
+        m.embed(|e| {
+            e.title(format!(
+                "{} {} {}",
+                tipper_disc.name, tip_text, tipee_disc.name
+            ))
+            .thumbnail(ava_url)
+            .field(giver_title, giver_desc, false)
+            .field(
+                format!("{} Tips Recieved", tipee_disc.name),
+                format!(
+                    "lifetime net: {}\n lifetime gross: {}\nweek net: {}\nweek gross: {}",
+                    tipee.lifetime_net, tipee.lifetime_gross, tipee.week_net, tipee.week_gross
+                ),
+                false,
+            )
+            .color(serenity::utils::Colour::GOLD)
+        })
+    });
+
+}
 
 fn transact_tip(tipper_id: u64, tipee_id: u64, is_anti: bool, url: &str, key: &str) -> TipResult {
     if tipper_id == tipee_id {

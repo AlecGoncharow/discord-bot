@@ -6,8 +6,8 @@ use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const SECONDS_IN_WEEK: u64 = 604800;
-const WEEKLY_TIPS: u8 = 7;
-const WEEKLY_ANTI_TIPS: u8 = 1;
+const WEEKLY_TIPS: u32 = 7;
+const WEEKLY_ANTI_TIPS: u32 = 1;
 const CHANNEL: u64 = 527728791876009994;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -17,9 +17,9 @@ struct User {
     lifetime_net: i32,
     week_gross: i8,
     week_net: i8,
-    tips: u8,
+    tips: u32,
     tips_given: u32,
-    anti_tips: u8,
+    anti_tips: u32,
     anti_tips_given: u32,
 }
 

@@ -12,7 +12,7 @@ extern crate reqwest;
 
 use serenity::{
     framework::StandardFramework,
-    model::{channel::Message, gateway::Ready},
+    model::{channel::Message, gateway::Ready, id::UserId},
     prelude::*,
 };
 use std::env;
@@ -37,7 +37,9 @@ fn main() {
         .expect("Error creating client");
     client.with_framework(
         StandardFramework::new()
-            .configure(|c| c.prefix("-")) // set the bot's prefix to "-"
+            .configure(|c| c
+                .prefix("-")
+                .owners(vec![UserId(DEV_ID)].into_iter().collect())) // set the bot's prefix to "-"
             .cmd("ping", commands::misc::ping)
             .cmd("mort", commands::misc::mort)
             .cmd("morton", commands::misc::mort)
@@ -47,6 +49,11 @@ fn main() {
             .group("Tips", |g| {
                 g.prefix("tips")
                     .command("profile", |c| c.cmd(commands::tip::profile))
+            })
+            .group("Admin", |g| {
+                g.prefix("admin")
+                    .command("quit", |c| c.cmd(commands::admin::quit)
+                        .owners_only(true))
             })
             .cmd("tip", commands::tip::handle_tip)
             .cmd("antitip", commands::tip::handle_tip)

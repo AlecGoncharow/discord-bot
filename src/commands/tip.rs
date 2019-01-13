@@ -6,7 +6,7 @@ use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const SECONDS_IN_WEEK: u64 = 604800;
-const WEEKLY_TIPS: u32 = 7;
+const WEEKLY_TIPS: u32 = 10;
 const WEEKLY_ANTI_TIPS: u32 = 1;
 const CHANNEL: u64 = 527728791876009994;
 
@@ -61,10 +61,7 @@ struct Tips {
 }
 
 command!(profile(_ctx, msg, msg_args) {
-    let is_other = match msg_args.single_n::<serenity::model::id::UserId>() {
-        Ok(_) => true,
-        Err(_) => false,
-    };
+    let is_other = msg_args.single_n::<serenity::model::id::UserId>().is_ok();
 
     let user: serenity::model::user::User = if is_other {
         msg_args.single::<serenity::model::id::UserId>().unwrap().to_user().unwrap()
@@ -73,7 +70,9 @@ command!(profile(_ctx, msg, msg_args) {
     };
 
     let key = std::env::var("ALECA_KEY").unwrap();
-    let tip_user: User = get_user(*user.id.as_u64(), "https://aleca-api.herokuapp.com", &key);
+    let id = *user.id.as_u64();
+    let url = "https://aleca-api.herokuapp.com";
+    let tip_user: User = get_user(id, url, &key);
     let avatar = user.face();
     let ava_url = if avatar.ends_with(".webp?size=1024") {
         &avatar[..avatar.len() - 15]
@@ -105,6 +104,9 @@ command!(profile(_ctx, msg, msg_args) {
                                                .field("Weekly Anti Tips Remaining",
                                                       tip_user.anti_tips,
                                                       true)
+                                               .field("Source",
+                                                       format!("{}/tips/user/{}", url, id),
+                                                       false)
                                                .color(
                                                     serenity::utils::Colour::GOLD
                                                 )
@@ -116,6 +118,7 @@ enum TipResult {
     Ok,
     SameId,
     NoTips,
+    Negative,
     WriteErr(String),
 }
 
@@ -128,15 +131,13 @@ command!(handle_tip(_ctx, msg, msg_args) {
     let is_anti = msg.content.starts_with("-anti");
     let url = "https://aleca-api.herokuapp.com";
     let key = std::env::var("ALECA_KEY").unwrap();
-    let is_tip = match msg_args.single_n::<serenity::model::id::UserId>() {
-        Ok(_) => true,
-        Err(_) => false,
-    };
+    let is_tip = msg_args.single_n::<serenity::model::id::UserId>().is_ok();
+
 
     if is_tip {
         let tipper_id = msg.author.id;
         let tipee_id = match msg_args.single_n::<serenity::model::id::UserId>() {
-            Ok(id) => id.clone(),
+            Ok(id) => id,
             _ => panic!("Something terrible has happened"),
         };
         let success = match transact_tip(*tipper_id.as_u64(), *tipee_id.as_u64(), is_anti, url, &key) {
@@ -153,10 +154,16 @@ command!(handle_tip(_ctx, msg, msg_args) {
                 let _ = msg.reply("you are out of that kind of tip for this week");
                 false
             }
+            TipResult::Negative => {
+                let _ = msg.reply("They do not have any tips, pls don't be mean");
+                false
+            }
             TipResult::Ok => true,
             _ => false,
         };
-        send_response(*tipper_id.as_u64(), *tipee_id.as_u64(), url, is_anti);
+        if success {
+            send_response(*tipper_id.as_u64(), *tipee_id.as_u64(), url, is_anti);
+        }
     }
 });
 
@@ -207,6 +214,10 @@ fn send_response(from: u64, to: u64, url: &str, is_anti: bool) {
                 ),
                 false,
             )
+                .field("Source",
+                    format!("from: {}/tips/user/{}\nto: {}/tips/user/{}", url, from, url, to),
+                    false
+                )
             .color(serenity::utils::Colour::GOLD)
         })
     });
@@ -222,6 +233,9 @@ fn transact_tip(tipper_id: u64, tipee_id: u64, is_anti: bool, url: &str, key: &s
     if is_anti {
         if tipper_user.anti_tips == 0 {
             return TipResult::NoTips;
+        }
+        if tipee_user.lifetime_net == 0 || tipee_user.week_net == 0 {
+            return TipResult::Negative;
         }
         reqwest::get(
             format!(
@@ -244,7 +258,7 @@ fn create_user(id: u64, url: &str, key: &str) -> User {
     let mut user = User::default();
     user.id = id;
 
-    reqwest::get(format!("{}/tips/create/{}?key={}", url, id, key).as_str());
+    reqwest::get(format!("{}/tips/user/create/{}?key={}", url, id, key).as_str());
 
     get_user(id, url, key)
 }
@@ -253,7 +267,7 @@ fn get_user(id: u64, url: &str, key: &str) -> User {
     let go = format!("{}/tips/{}", url, id);
     println!("{}", go);
 
-    let mut req = reqwest::get(format!("{}/tips/{}", url, id).as_str()).unwrap();
+    let mut req = reqwest::get(format!("{}/tips/user/{}", url, id).as_str()).unwrap();
     println!("{:?}", req);
     if req.status() == reqwest::StatusCode::NOT_FOUND {
         create_user(id, url, key)

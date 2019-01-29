@@ -5,6 +5,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
 extern crate chrono;
+extern crate artifact_lib;
 extern crate rand;
 extern crate regex;
 extern crate reqwest;
@@ -16,9 +17,15 @@ use serenity::{
     prelude::*,
 };
 use std::env;
-
+use artifact_lib::Artifact;
 mod commands;
 struct Handler;
+
+
+
+lazy_static! {
+    static ref ARTIFACT: Artifact = Artifact::new();
+}
 
 static DEV_ID: u64 = 198321762537177088;
 
@@ -28,6 +35,7 @@ impl EventHandler for Handler {
     }
     fn ready(&self, _: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
+        println!("{:?}", ARTIFACT.card_from_name("drow ranger").unwrap());
     }
 }
 
@@ -57,7 +65,14 @@ fn main() {
             })
             .cmd("tip", commands::tip::handle_tip)
             .cmd("antitip", commands::tip::handle_tip)
-            .cmd("profile", commands::tip::profile),
+            .cmd("profile", commands::tip::profile)
+            .cmd("card", commands::artifact::get_card)
+            .cmd("deck", commands::artifact::get_deck)
+            .group("Artifact", |g| {
+                g.prefix("artifact")
+                    .command("card", |c| c.cmd(commands::artifact::get_card))
+                    .command("deck", |c| c.cmd(commands::artifact::get_deck))
+            }),
     );
     let user = serenity::model::id::UserId(DEV_ID).to_user().unwrap();
 
